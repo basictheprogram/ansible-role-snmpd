@@ -1,28 +1,38 @@
 ---
-#
-# Ansible managed
-#
 dependency:
   name: galaxy
   options:
-    role-file: requirements.yml
+    ignore-errors: true
     requirements-file: requirements.yml
-lint: |
-  set -e
-  yamllint .
-  ansible-lint
+
 driver:
   name: docker
+
 platforms:
-  - name: "snmpd-${image:-fedora}-${tag:-latest}"
-    image: "${namespace:-robertdebock}/${image:-fedora}:${tag:-latest}"
+  - name: "snmpd-${image:-ubuntu2404}-${tag:-latest}"
+    image: "geerlingguy/docker-${image:-ubuntu2404}-ansible:${tag:-latest}"
     command: /sbin/init
     cgroupns_mode: host
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     privileged: true
     pre_build_image: true
+
 provisioner:
   name: ansible
+  env:
+    # Allow molecule to find this role by its directory name when the
+    # repo is cloned alongside other roles.
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
+    # molecule-plugins destroy.yml uses a string-truthy when: condition
+    # that became a hard error in ansible-core 2.20. Allow it until
+    # molecule-plugins ships a fix.
+    ANSIBLE_ALLOW_BROKEN_CONDITIONALS: "1"
+    # Suppress deprecation noise from molecule-plugins' own playbooks.
+    ANSIBLE_DEPRECATION_WARNINGS: "0"
+
 verifier:
-  name: ansible
+  name: testinfra
+  directory: ./tests/
+  options:
+    v: true

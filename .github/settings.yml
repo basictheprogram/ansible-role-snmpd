@@ -1,8 +1,5 @@
 ---
-#
-# Ansible managed
-#
 repository:
   description: Install and configure snmpd on your system.
-  homepage: https://buluma.github.io/
+  homepage: https://github.com/basictheprogram/ansible-role-snmpd
   topics: snmpd, ansible, molecule, playbook

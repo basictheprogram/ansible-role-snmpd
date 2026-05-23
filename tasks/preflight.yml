@@ -1,0 +1,344 @@
+---
+# preflight.yml — fail-fast checks run before any state-changing tasks.
+#
+# Section 1: OS compatibility — must be first; stops the play immediately on
+#   unsupported platforms before any packages are installed or files written.
+#
+# Section 2: Variable validation — asserts that every user-facing variable
+#   has the expected type and allowed values.
+
+# ---------------------------------------------------------------------------
+# Section 1 — OS compatibility
+# ---------------------------------------------------------------------------
+
+- name: preflight | Assert OS family is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] in _snmpd_supported_os_families
+    quiet: true
+    fail_msg: >-
+      OS family '{{ ansible_facts['os_family'] }}' is not supported by this
+      role. Supported families: {{ _snmpd_supported_os_families | join(', ') }}.
+
+- name: preflight | Assert package list resolved for this OS
+  ansible.builtin.assert:
+    that:
+      - snmpd_packages is defined
+      - snmpd_packages is iterable
+      - snmpd_packages is not string
+      - snmpd_packages | length > 0
+    quiet: true
+    fail_msg: >-
+      No package list found for OS family '{{ ansible_facts['os_family'] }}'.
+      Check vars/main.yml — the _snmpd_packages mapping must include an entry
+      for this OS family or a 'default' fallback.
+
+# ---------------------------------------------------------------------------
+# Section 2 — Variable validation
+# ---------------------------------------------------------------------------
+
+- name: preflight | Assert snmpd_security_names is a non-empty list
+  ansible.builtin.assert:
+    that:
+      - snmpd_security_names is defined
+      - snmpd_security_names is iterable
+      - snmpd_security_names is not string
+      - snmpd_security_names | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_security_names must be a non-empty list of security name mappings.
+
+- name: preflight | Assert each snmpd_security_names item
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.source is defined
+      - item.source is string
+      - item.community is defined
+      - item.community is string
+    quiet: true
+    fail_msg: >-
+      snmpd_security_names[{{ snmpd_idx }}] must have string fields:
+      name, source, community.
+  loop: "{{ snmpd_security_names }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+
+- name: preflight | Assert snmpd_groups is a non-empty list
+  ansible.builtin.assert:
+    that:
+      - snmpd_groups is defined
+      - snmpd_groups is iterable
+      - snmpd_groups is not string
+      - snmpd_groups | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_groups must be a non-empty list of group definitions.
+
+- name: preflight | Assert each snmpd_groups item
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.security_model is defined
+      - item.security_model is string
+      - item.security_model in ["v1", "v2c"]
+      - item.security_name is defined
+      - item.security_name is string
+    quiet: true
+    fail_msg: >-
+      snmpd_groups[{{ snmpd_idx }}] '{{ item.name }}' must have string fields
+      name, security_name, and security_model in ['v1', 'v2c'].
+  loop: "{{ snmpd_groups }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+
+- name: preflight | Assert snmpd_views is a non-empty list
+  ansible.builtin.assert:
+    that:
+      - snmpd_views is defined
+      - snmpd_views is iterable
+      - snmpd_views is not string
+      - snmpd_views | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_views must be a non-empty list of view definitions.
+
+- name: preflight | Assert each snmpd_views item
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.type is defined
+      - item.type is string
+      - item.type in ["included", "excluded"]
+      - item.subtree is defined
+      - item.subtree is string
+    quiet: true
+    fail_msg: >-
+      snmpd_views[{{ snmpd_idx }}] '{{ item.name }}' must have string fields
+      name, subtree, and type in ['included', 'excluded'].
+  loop: "{{ snmpd_views }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+
+- name: preflight | Assert snmpd_accesses is a non-empty list
+  ansible.builtin.assert:
+    that:
+      - snmpd_accesses is defined
+      - snmpd_accesses is iterable
+      - snmpd_accesses is not string
+      - snmpd_accesses | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_accesses must be a non-empty list of access control entries.
+
+- name: preflight | Assert each snmpd_accesses item
+  ansible.builtin.assert:
+    that:
+      - item.group is defined
+      - item.group is string
+      - item.context is defined
+      - item.context is string
+      - item.security_model is defined
+      - item.security_model is string
+      - item.security_model in ["any", "v1", "v2c", "usm"]
+      - item.security_level is defined
+      - item.security_level is string
+      - item.prefix is defined
+      - item.prefix is string
+      - item.read is defined
+      - item.read is string
+      - item.write is defined
+      - item.write is string
+      - item.notif is defined
+      - item.notif is string
+    quiet: true
+    fail_msg: >-
+      snmpd_accesses[{{ snmpd_idx }}] group '{{ item.group }}' has missing or
+      invalid fields. Required: group, context, security_level, prefix, read,
+      write, notif (all strings); security_model in ['any','v1','v2c','usm'].
+  loop: "{{ snmpd_accesses }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.group }}"
+    index_var: snmpd_idx
+
+- name: preflight | Assert snmpd_syslocation is a string
+  ansible.builtin.assert:
+    that:
+      - snmpd_syslocation is defined
+      - snmpd_syslocation is string
+    quiet: true
+    fail_msg: >-
+      snmpd_syslocation must be a string, e.g. 'Server Room A, Building 1'.
+
+- name: preflight | Assert snmpd_syscontact is a string
+  ansible.builtin.assert:
+    that:
+      - snmpd_syscontact is defined
+      - snmpd_syscontact is string
+    quiet: true
+    fail_msg: >-
+      snmpd_syscontact must be a string, e.g. 'ops@example.com'.
+
+- name: preflight | Assert snmpd_dontlogtcpwrappersconnects is valid
+  ansible.builtin.assert:
+    that:
+      - snmpd_dontlogtcpwrappersconnects is defined
+      - snmpd_dontlogtcpwrappersconnects is string
+      - snmpd_dontlogtcpwrappersconnects in ["false", "true"]
+    quiet: true
+    fail_msg: >-
+      snmpd_dontlogtcpwrappersconnects must be the string 'true' or 'false'.
+
+- name: preflight | Assert snmpd_processes is a list (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_processes is iterable
+      - snmpd_processes is not string
+    quiet: true
+    fail_msg: >-
+      snmpd_processes must be a list of process monitor definitions.
+  when: snmpd_processes is defined
+
+- name: preflight | Assert each snmpd_processes item has required name
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+    quiet: true
+    fail_msg: >-
+      snmpd_processes[{{ snmpd_idx }}] must have a 'name' string field.
+  loop: "{{ snmpd_processes }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+  when: snmpd_processes is defined
+
+- name: preflight | Assert optional snmpd_processes item.minimum is a number
+  ansible.builtin.assert:
+    that:
+      - item.minimum is number
+    quiet: true
+    fail_msg: >-
+      snmpd_processes[{{ snmpd_idx }}] '{{ item.name }}' minimum must be a number.
+  loop: "{{ snmpd_processes }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+  when:
+    - snmpd_processes is defined
+    - item.minimum is defined
+
+- name: preflight | Assert optional snmpd_processes item.maximum is a number
+  ansible.builtin.assert:
+    that:
+      - item.maximum is number
+    quiet: true
+    fail_msg: >-
+      snmpd_processes[{{ snmpd_idx }}] '{{ item.name }}' maximum must be a number.
+  loop: "{{ snmpd_processes }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+  when:
+    - snmpd_processes is defined
+    - item.maximum is defined
+
+- name: preflight | Assert snmpd_scripts is a list (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_scripts is iterable
+      - snmpd_scripts is not string
+    quiet: true
+    fail_msg: >-
+      snmpd_scripts must be a list of script monitor definitions.
+  when: snmpd_scripts is defined
+
+- name: preflight | Assert each snmpd_scripts item
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.program is defined
+      - item.program is string
+      - item.arguments is defined
+      - item.arguments is string
+    quiet: true
+    fail_msg: >-
+      snmpd_scripts[{{ snmpd_idx }}] must have string fields: name, program, arguments.
+  loop: "{{ snmpd_scripts }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.name }}"
+    index_var: snmpd_idx
+  when: snmpd_scripts is defined
+
+- name: preflight | Assert snmpd_disks is a list (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_disks is iterable
+      - snmpd_disks is not string
+    quiet: true
+    fail_msg: >-
+      snmpd_disks must be a list of disk monitor definitions.
+  when: snmpd_disks is defined
+
+- name: preflight | Assert each snmpd_disks item has a path
+  ansible.builtin.assert:
+    that:
+      - item.path is defined
+      - item.path is string
+    quiet: true
+    fail_msg: >-
+      snmpd_disks[{{ snmpd_idx }}] must have a 'path' string field.
+  loop: "{{ snmpd_disks }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.path }}"
+    index_var: snmpd_idx
+  when: snmpd_disks is defined
+
+- name: preflight | Assert optional snmpd_disks item.minimum is a number
+  ansible.builtin.assert:
+    that:
+      - item.minimum is number
+    quiet: true
+    fail_msg: >-
+      snmpd_disks[{{ snmpd_idx }}] '{{ item.path }}' minimum must be a number
+      (minimum free space in KB).
+  loop: "{{ snmpd_disks }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.path }}"
+    index_var: snmpd_idx
+  when:
+    - snmpd_disks is defined
+    - item.minimum is defined
+
+- name: preflight | Assert snmpd_load thresholds (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_load is mapping
+      - snmpd_load.one_minute_average is defined
+      - snmpd_load.one_minute_average is number
+      - snmpd_load.five_minute_average is defined
+      - snmpd_load.five_minute_average is number
+      - snmpd_load.fifteen_minute_average is defined
+      - snmpd_load.fifteen_minute_average is number
+    quiet: true
+    fail_msg: >-
+      snmpd_load must be a mapping with numeric keys:
+      one_minute_average, five_minute_average, fifteen_minute_average.
+  when: snmpd_load is defined

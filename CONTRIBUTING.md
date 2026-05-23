@@ -1,70 +1,80 @@
-# [Please contribute](#please-contribute)
+# Contributing
 
-You can really make a difference by:
+Contributions are welcome and appreciated. This role is maintained by
+[Bob Tanner](https://github.com/basictheprogram).
 
-- [Making an issue](https://help.github.com/articles/creating-an-issue/). A well described issue helps a lot. (Have a look at the [known issues](https://github.com/search?q=user%3Abuluma+is%3Aissue+state%3Aopen).)
-- [Making a pull request](https://services.github.com/on-demand/github-cli/open-pull-request-github) when you see the error in code.
+---
 
-I'll try to help and take every contribution seriously.
+## Upstream
 
-It's a great opportunity for me to learn how you use the role and also an opportunity to get into the habit of contributing to open source software.
+This role is a fork of
+[buluma/ansible-role-snmpd](https://github.com/buluma/ansible-role-snmpd).
+Pull requests are **not** sent upstream — changes here are specific to this
+fork's modernisation goals (ansible-core 2.20, ansible-lint 26.x, testinfra
+verification).
 
-## [Step by step](#step-by-step)
+---
 
-Here is how you can help, a lot of steps are related to GitHub, not specifically my roles.
+## How to contribute
 
-### [1. Make an issue.](#1-make-an-issue)
+### 1. Open an issue
 
-When you spot an issue, [create an issue](https://github.com/buluma/ansible-role-snmpd/issues).
+When you spot a bug or have a feature idea, [open an
+issue](https://github.com/basictheprogram/ansible-role-snmpd/issues) first.
+A clear description — what you expected, what happened, which platform — helps
+a lot and avoids duplicated effort.
 
-Making the issue help me and others to find similar problems in the future.
-
-### [2. Fork the project.](#2-fork-the-project)
-
-On the top right side of [the repository on GitHub](https://github.com/buluma/ansible-role-snmpd), click `fork`. This copies everything to your GitHub namespace.
-
-### [3. Make the changes](#3-make-the-changes)
-
-In you own GitHub namespace, make the required changes.
-
-I typically do that by cloning the repository (in your namespace) locally:
+### 2. Fork and clone
 
 ```shell
 git clone git@github.com:YOURNAMESPACE/ansible-role-snmpd.git
+cd ansible-role-snmpd
 ```
 
-Now you can start to edit on your laptop.
+### 3. Make your changes
 
-### [4. Optionally: test your changes](#4-optionally-test-your-changes)
+Keep commits focused and the commit message descriptive.
 
-Install [molecule](https://molecule.readthedocs.io/en/stable/):
+### 4. Test your changes
+
+Install the test dependencies:
 
 ```shell
-pip install molecule ansible-lint docker
+pip install -r requirements.txt
 ```
 
-And run `molecule test`. If you want to test a specific distribution, set `image` and optionally `tag`:
+Run a quick lint pass before every commit:
 
 ```shell
-image=centos tag=7 molecule test
+pre-commit run --all-files
 ```
 
-### [5. Optionally: Regenerate all dynamic content](#5-optionally-regenerate-all-dynamic-content)
+Run Molecule against a specific platform (requires Docker):
 
-You can use [Ansible Generator](https://github.com/buluma/ansible-generator) to regenerate all dynamic content.
+```shell
+image=ubuntu2404 molecule test
+image=debian12   molecule test
+image=rockylinux9 molecule test
+```
 
-If you don't do it, I'll do it later for you.
+Run the full test matrix:
 
-### [6. Make a pull request](#6-make-a-pull-request)
+```shell
+molecule test
+```
 
-[GitHub](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) on pull requests.
+Molecule uses **testinfra / pytest** for verification. Tests live in
+`molecule/default/tests/test_default.py`.
 
-In the comment-box, you can [refer to the issue number](https://help.github.com/en/github/writing-on-github/autolinked-references-and-urls) by using #123, where 123 is the issue number.
+### 5. Open a pull request
 
-### [7. Wait](#7-wait)
+[Open a pull request](https://github.com/basictheprogram/ansible-role-snmpd/pulls)
+against `main`. Reference the related issue number in the PR description
+(e.g. `Closes #42`). CI will run lint and the full Molecule matrix automatically.
 
-Now I'll get a message that you've added some code. Thank you, really.
+---
 
-CI starts to test your changes. You can follow the progress on Travis.
+## License
 
-Please consider [sponsoring me](https://github.com/sponsors/buluma).
+By contributing you agree that your changes will be licensed under the
+[Apache-2.0](LICENSE) license that covers this project.

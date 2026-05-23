@@ -1,27 +1,40 @@
 ---
+dependencies: []
+
 galaxy_info:
-  author: buluma
+  namespace: realtime
   role_name: snmpd
-  description: Install and configure snmpd on your system.
+  author: "Bob Tanner"
+  company: "Real Time Enterprises, Inc."
+  description: >
+    Install and configure the SNMP daemon (snmpd) on Alpine, Debian/Ubuntu,
+    Red Hat/Rocky/Alma, Fedora, and SUSE systems. Fork of
+    buluma/ansible-role-snmpd (https://github.com/buluma/ansible-role-snmpd),
+    modernised for ansible-core 2.20 and ansible-lint 26.x.
   license: Apache-2.0
-  company: none
-  min_ansible_version: "2.12"
+  min_ansible_version: "2.20"
   platforms:
     - name: Alpine
       versions:
         - all
     - name: EL
       versions:
-        - all
+        - "8"
+        - "9"
     - name: Debian
       versions:
-        - all
+        - bookworm
+        - trixie
     - name: Fedora
       versions:
         - all
     - name: Ubuntu
       versions:
-        - all
+        - jammy
+        - noble
+        - resolute
   galaxy_tags:
+    - monitoring
+    - snmp
     - snmpd
-dependencies: []
+    - network

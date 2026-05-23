@@ -1,20 +1,12 @@
 ---
-#
-# Ansible managed
-#
+# This workflow is not currently active.
+# A requirements.dot dependency graph has not been created for this role.
+# Enable this workflow and add requirements.dot if you want auto-generated
+# dependency graphs committed to a png branch on each release.
+name: Dependency Graph (disabled)
 
-on:
-  push:
-    branches:
-      - master
-      - main
-    paths:
-      - '.github/workflows/requirements2png.yml'
-  release:
-    types:
-      - published
-
-name: Ansible Graphviz
+"on":
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,22 +14,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: checkout
-        uses: actions/checkout@v6
-        with:
-          path: ${{ github.repository }}
-      - name: create png
-        uses: buluma/graphviz-action@1.0.0
-      - name: Commit files
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install graphviz
+        run: sudo apt-get install -y graphviz
+
+      - name: Generate PNG from dot file
+        run: dot -Tpng requirements.dot -o requirements.png
+
+      - name: Commit generated files
         run: |
-          cd ${{ github.repository }}
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add requirements.dot requirements.png
-          git commit -m "Add generated files"
-      - name: save to png branch
-        uses: ad-m/github-push-action@master
-        with:
-          directory: ${{ github.repository }}
-          force: true
-          branch: png
+          git diff --cached --quiet || git commit -m "chore: update dependency graph"
+          git push

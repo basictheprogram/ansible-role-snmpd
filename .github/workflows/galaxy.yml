@@ -1,14 +1,11 @@
 ---
-#
-# Ansible managed
-#
-
 name: Release to Ansible Galaxy
 
-on:
+"on":
   release:
     types:
       - published
+
 jobs:
   release:
     runs-on: ubuntu-latest

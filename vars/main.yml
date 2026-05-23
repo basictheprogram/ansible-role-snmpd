@@ -1,6 +1,13 @@
 ---
 # vars file for snmpd
 
+_snmpd_supported_os_families:
+  - Alpine
+  - Debian
+  - RedHat
+  - Suse
+  - Fedora
+
 _snmpd_packages:
   default:
     - snmpd
@@ -10,7 +17,9 @@ _snmpd_packages:
     - net-snmp
   Suse:
     - net-snmp
+  Fedora:
+    - net-snmp
 
-snmpd_packages: "{{ _snmpd_packages[ansible_os_family] | default(_snmpd_packages['default']) }}"
+snmpd_packages: "{{ _snmpd_packages[ansible_facts['os_family']] | default(_snmpd_packages['default']) }}"
 
 snmpd_service: snmpd

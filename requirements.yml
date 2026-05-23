@@ -1,4 +1,9 @@
 ---
-roles:
-  - name: buluma.bootstrap
-collections:
+# Ansible Galaxy dependencies — installed automatically by molecule before
+# each test run (see molecule/default/molecule.yml dependency.name: galaxy).
+#
+# No external Galaxy roles are required.  The buluma.bootstrap dependency was
+# removed; prepare.yml now primes the package cache directly using built-in
+# modules.  The geerlingguy Docker images already provide Python, sudo, and
+# systemd.
+roles: []

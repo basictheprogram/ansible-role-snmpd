@@ -1,20 +1,23 @@
 ---
+# Based on ansible-lint config
 extends: default
 
 rules:
-  comments:
-    min-spaces-from-content: 1
   braces:
     max-spaces-inside: 1
     level: error
-  brackets:
-    max-spaces-inside: 1
+
+  hyphens:
     level: error
-  octal-values:
-    forbid-implicit-octal: true
+
   line-length: disable
-  truthy: disable
+
+  # Required by ansible-lint — must not be loosened.
+  comments:
+    min-spaces-from-content: 1
+
   comments-indentation: false
 
-ignore: |
-  .cache/
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true

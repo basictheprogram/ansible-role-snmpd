@@ -1,5 +1,12 @@
 ---
-- name: Verify
+# verify.yml — pre-test preparation for the testinfra suite.
+#
+# The testinfra tests in tests/test_default.py run snmpwalk to verify
+# end-to-end SNMP reachability. This play installs the snmpwalk client
+# transiently so those tests can execute. Assertions about daemon state,
+# config permissions, and rendered content are owned by testinfra.
+
+- name: Prepare for testinfra verification
   hosts: all
   become: true
   gather_facts: true
@@ -10,28 +17,22 @@
         - snmp
       Alpine:
         - net-snmp-tools
-      RedHat: &redhat_snmpwalk_package
+      RedHat:
         - net-snmp-utils
-      Rocky: *redhat_snmpwalk_package
+      Rocky:
+        - net-snmp-utils
       Suse:
         - net-snmp
-    snmpd_snmpwalk_package:
-      "{{ _snmpd_snmpwalk_package[ansible_os_family] | default(_snmpd_snmpwalk_package['default'])
-      }}"
+    snmpd_snmpwalk_package: >-
+      {{ _snmpd_snmpwalk_package[ansible_facts['os_family']]
+         | default(_snmpd_snmpwalk_package['default']) }}
 
   tasks:
-    - name: Install snmpwalk
+    - name: Install snmpwalk client for testinfra smoke test
       ansible.builtin.package:
         name: "{{ snmpd_snmpwalk_package }}"
-      notify:
-        - Remove snmpwalk
-
-    - name: Try snmpwalk
-      ansible.builtin.command:
-        cmd: snmpwalk -v1 -c public localhost
-
-  handlers:
-    - name: Remove snmpwalk
-      ansible.builtin.package:
-        name: "{{ snmpd_snmpwalk_package }}"
-        state: absent
+        state: present
+      register: snmpd_snmpwalk_install
+      until: snmpd_snmpwalk_install is succeeded
+      retries: 3
+      delay: 5

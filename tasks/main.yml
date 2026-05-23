@@ -1,15 +1,17 @@
 ---
 # tasks file for snmpd
 
-- name: Include assert.yml
-  ansible.builtin.import_tasks: assert.yml
-  run_once: true
-  delegate_to: localhost
+- name: Preflight checks
+  ansible.builtin.import_tasks: preflight.yml
 
 - name: Install snmpd
   ansible.builtin.package:
     name: "{{ snmpd_packages }}"
     state: present
+  register: snmpd_install_result
+  until: snmpd_install_result is succeeded
+  retries: 3
+  delay: 5
 
 - name: Configure snmpd
   ansible.builtin.template:
@@ -21,7 +23,7 @@
   notify:
     - Restart snmpd
 
-- name: Start snmpd
+- name: Start and enable snmpd
   ansible.builtin.service:
     name: "{{ snmpd_service }}"
     state: started

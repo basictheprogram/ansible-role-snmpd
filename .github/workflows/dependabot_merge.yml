@@ -1,11 +1,7 @@
 ---
-#
-# Ansible managed
-#
+name: Dependabot Merge
 
-name: "Dependabot Merge"
-
-on:
+"on":
   pull_request:
   pull_request_target:
 
@@ -15,10 +11,27 @@ permissions:
 
 jobs:
   dependabot_merge:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
-      - uses: "actions/checkout@master"
-      - name: Auto Merge Dependabot Updates
-        uses: "buluma/gh-action-auto-merge-dependabot-updates@master"
-        with:
-          allowed-actors: dependabot-preview[bot], dependabot[bot]
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Auto-approve patch and minor updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch and minor updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

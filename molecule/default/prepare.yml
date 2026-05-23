@@ -1,8 +1,27 @@
 ---
-- name: prepare
+# prepare.yml — refresh the package cache on the test container so that
+# subsequent package installations during converge succeed without stale-index
+# errors.  The geerlingguy Docker images already ship Python, sudo, and
+# systemd, so no external bootstrap role is required.
+
+- name: Prepare
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
 
-  roles:
-    - role: buluma.bootstrap
+  tasks:
+    - name: Refresh apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['pkg_mgr'] == 'apt'
+
+    - name: Refresh dnf cache
+      ansible.builtin.dnf:
+        update_cache: true
+      when: ansible_facts['pkg_mgr'] in ['dnf', 'yum']
+
+    - name: Refresh apk cache
+      ansible.builtin.command: apk update
+      changed_when: false
+      when: ansible_facts['pkg_mgr'] == 'apk'

@@ -1,3 +1,13 @@
+#
+# For Ansible Galaxy dependencies (roles/collections used by molecule),
+# Install with: pip install -r requirements.txt
+# Python dependencies for local development and CI.
+# see requirements.yml — molecule installs those automatically.
+ansible-core
+docker
 molecule
 molecule-plugins[docker]
 paramiko
+pre-commit
+pytest
+pytest-testinfra
