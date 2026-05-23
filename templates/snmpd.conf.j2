@@ -1,5 +1,19 @@
 {{ ansible_managed | comment }}
 
+{% if snmpd_agentaddress is defined %}
+agentaddress {{ snmpd_agentaddress }}
+
+{% endif %}
+{% if snmpd_rocommunities is defined %}
+{% for rc in snmpd_rocommunities %}
+{% if rc.source is defined %}
+rocommunity {{ rc.community }} {{ rc.source }}
+{% else %}
+rocommunity {{ rc.community }}
+{% endif %}
+{% endfor %}
+
+{% endif %}
 {% for security_name in snmpd_security_names %}
 com2sec {{ security_name.name }} {{ security_name.source }} {{ security_name.community }}
 {% endfor %}
@@ -55,4 +69,14 @@ disk {{ disk.path }}
 
 {% if snmpd_load is defined %}
 load {{ snmpd_load.one_minute_average }} {{ snmpd_load.five_minute_average }} {{ snmpd_load.fifteen_minute_average }}
+{% endif %}
+
+{% if snmpd_trap_sinks is defined %}
+{% for sink in snmpd_trap_sinks %}
+{% if sink.community is defined %}
+trap2sink {{ sink.host }} {{ sink.community }}
+{% else %}
+trap2sink {{ sink.host }}
+{% endif %}
+{% endfor %}
 {% endif %}

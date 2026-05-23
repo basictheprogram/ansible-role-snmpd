@@ -20,8 +20,9 @@ originally authored and published to Ansible Galaxy by
 This work would not exist without that initial effort — thank you.
 
 Changes from upstream: modernised for ansible-core 2.20, ansible-lint 26.x,
-`ansible_facts` dict syntax, testinfra/pytest verification, and a preflight
-fail-fast OS check. Pull requests are not sent upstream.
+`ansible_facts` dict syntax, testinfra/pytest verification, preflight
+fail-fast OS check, conf.d drop-in support, and trap sink configuration.
+Pull requests are not sent upstream.
 
 ---
 
@@ -31,7 +32,7 @@ fail-fast OS check. Pull requests are not sent upstream.
 - Python ≥ 3.11 (on the controller, for testinfra)
 - pip packages in [`requirements.txt`](requirements.txt):
   `ansible-core`, `molecule`, `molecule-plugins[docker]`,
-  `pytest-testinfra`, `paramiko`
+  `pytest-testinfra`, `paramiko`, `docker`, `pre-commit`
 
 ---
 
@@ -39,7 +40,7 @@ fail-fast OS check. Pull requests are not sent upstream.
 
 | Platform | Versions |
 |----------|----------|
-| Ubuntu   | jammy (22.04), noble (24.04) |
+| Ubuntu   | jammy (22.04), noble (24.04), resolute (26.04) |
 | Debian   | bookworm (12), trixie (13) |
 | EL (Rocky / Alma / RHEL) | 8, 9 |
 | Fedora   | current |
@@ -53,12 +54,23 @@ Minimum ansible-core: **2.20**
 
 All variables have defaults in [`defaults/main.yml`](defaults/main.yml).
 
+### Agent address
+
+```yaml
+# Bind address(es) for the SNMP agent. When undefined snmpd uses its own
+# default (udp:161 on all interfaces). Set explicitly to control which
+# interfaces and protocols are active.
+# snmpd_agentaddress: "0.0.0.0,[::]"          # all IPv4 + IPv6
+# snmpd_agentaddress: "udp:161,udp6:[::1]:161" # localhost only
+```
+
 ### SNMP access control
 
 These four structures map directly to `snmpd.conf` access-control directives.
 
 ```yaml
 # com2sec — maps a security name to a source address and community string.
+# Restrict source to the NMS subnet in production; never leave 'default'.
 # Store the community string in Ansible Vault in production.
 snmpd_security_names:
   - name: notConfigUser
@@ -101,12 +113,51 @@ snmpd_syscontact: Root <root@localhost>
 snmpd_dontlogtcpwrappersconnects: "true"   # string "true" or "false"
 ```
 
+### Drop-in directory (conf.d)
+
+When `snmpd_use_conf_d` is `true` the role creates the conf.d directory,
+writes the rendered config there, and replaces `/etc/snmp/snmpd.conf` with
+an `includeDir`-only stub.
+
+```yaml
+snmpd_use_conf_d: false
+snmpd_conf_d_path: /etc/snmp/snmpd.conf.d
+snmpd_conf_d_file: ansible-snmpd.conf
+```
+
+### Simple read-only community (rocommunity)
+
+Use `snmpd_rocommunities` when you only need basic SNMPv1/v2c read-only
+access to the entire MIB tree and don't need the full
+com2sec/group/view/access chain. The two approaches can coexist, but
+typically you use one or the other.
+
+```yaml
+snmpd_security_names: []
+snmpd_groups: []
+snmpd_views: []
+snmpd_accesses: []
+
+snmpd_rocommunities:
+  - community: "{{ vault_snmp_rocommunity }}"
+    source: 192.168.100.0/24   # restrict to NMS subnet; omit to allow any source
+```
+
+### Trap destinations
+
+```yaml
+# snmpd_trap_sinks:
+#   - host: 192.168.1.100
+#     community: "{{ vault_snmp_rocommunity }}"  # optional; omit to use daemon default
+```
+
 ### Optional monitors
 
 ```yaml
 # Process monitors (proc directives)
 snmpd_processes:
-  - name: mountd
+  - name: sshd
+    minimum: 1
   - name: ntalkd
     maximum: 4
   - name: sendmail
@@ -119,10 +170,13 @@ snmpd_scripts:
     program: /bin/sh
     arguments: /tmp/shtest
 
-# Disk space monitors — minimum is free space in KB
+# Disk space monitors — minimum is free space in KB (kilobytes).
+# 10000 KB ≈ 10 MB  |  102400 KB ≈ 100 MB  |  1048576 KB ≈ 1 GB
 snmpd_disks:
   - path: /
-    minimum: 10000
+    minimum: 10000   # KB
+  - path: /var
+    minimum: 5000    # KB
 
 # Load average thresholds
 snmpd_load:
@@ -143,16 +197,46 @@ snmpd_load:
   gather_facts: true
 
   vars:
+    snmpd_agentaddress: "0.0.0.0,[::]"
     snmpd_syslocation: "Server Room A, Building 1"
     snmpd_syscontact: "ops@example.com"
     snmpd_security_names:
-      - name: myNet
+      - name: ro
         source: 192.168.1.0/24
-        community: "{{ vault_snmp_community }}"
+        community: "{{ vault_snmp_rocommunity }}"
+    snmpd_groups:
+      - name: ro_group
+        security_model: v1
+        security_name: ro
+      - name: ro_group
+        security_model: v2c
+        security_name: ro
+    snmpd_views:
+      - name: systemonly
+        type: included
+        subtree: ".1.3.6.1.2.1.1"
+      - name: systemonly
+        type: included
+        subtree: ".1.3.6.1.2.1.25.1"
+    snmpd_accesses:
+      - group: ro_group
+        context: ""
+        security_model: any
+        security_level: noauth
+        prefix: exact
+        read: systemonly
+        write: none
+        notif: none
+    snmpd_trap_sinks:
+      - host: 192.168.1.100
+        community: "{{ vault_snmp_rocommunity }}"
 
   roles:
-    - role: ansible-role-snmpd
+    - role: realtime.snmpd
 ```
+
+A worked example for a data-center monitored VM is in
+[`examples/host_vars/datacenter_vm.yml`](examples/host_vars/datacenter_vm.yml).
 
 ---
 
@@ -169,6 +253,12 @@ snmpd_load:
 
 ## Testing
 
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
 ```bash
 # Fast lint pass — run before every commit
 pre-commit run --all-files
@@ -183,9 +273,12 @@ molecule test
 Override the test platform via environment variables (matches the CI matrix):
 
 ```bash
-image=ubuntu2204 molecule test   # Ubuntu 22.04
-image=debian12   molecule test   # Debian 12
-image=rockylinux9 molecule test  # Rocky Linux 9
+image=ubuntu2404  molecule test   # Ubuntu 24.04
+image=ubuntu2204  molecule test   # Ubuntu 22.04
+image=debian12    molecule test   # Debian 12
+image=debian13    molecule test   # Debian 13
+image=rockylinux9 molecule test   # Rocky Linux 9
+image=fedora40    molecule test   # Fedora 40
 ```
 
 ### Verification

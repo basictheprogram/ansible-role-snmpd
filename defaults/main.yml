@@ -1,6 +1,13 @@
 ---
 # defaults file for snmpd
 
+# Bind address(es) for the SNMP agent.  When undefined snmpd uses its own
+# default (udp:161 on all interfaces).  Set explicitly to control which
+# interfaces and protocols are active, e.g.:
+#   snmpd_agentaddress: "0.0.0.0,[::]"        # all IPv4 + IPv6
+#   snmpd_agentaddress: "udp:161,udp6:[::1]:161"  # localhost only
+# snmpd_agentaddress:
+
 snmpd_security_names:
   - name: notConfigUser
     source: default
@@ -37,6 +44,30 @@ snmpd_syscontact: Root <root@localhost>
 
 snmpd_dontlogtcpwrappersconnects: "true"
 
+# Drop-in directory support.
+# When snmpd_use_conf_d is true the role creates snmpd_conf_d_path, writes
+# the rendered config to snmpd_conf_d_path/snmpd_conf_d_file, and replaces
+# the main /etc/snmp/snmpd.conf with an includeDir-only stub.
+snmpd_use_conf_d: false
+snmpd_conf_d_path: /etc/snmp/snmpd.conf.d
+snmpd_conf_d_file: ansible-snmpd.conf
+
+# Simple read-only community access (rocommunity directive).
+# Use instead of the full com2sec/group/view/access chain when you only need
+# basic SNMPv1/v2c read-only access to the entire MIB tree.
+# 'source' is optional; omit it to allow polling from any address.
+# Store community strings in Ansible Vault in production.
+# snmpd_rocommunities:
+#   - community: "{{ vault_snmp_rocommunity }}"
+#     source: 192.168.100.0/24   # restrict to NMS subnet
+
+# SNMP trap destinations.  Each entry requires 'host'; 'community' is optional
+# and falls back to the snmpd daemon default when omitted.
+# Store community strings in Ansible Vault in production.
+# snmpd_trap_sinks:
+#   - host: 192.168.1.100
+#     community: "{{ vault_snmp_rocommunity }}"
+
 # snmpd_processes:
 #   - name: mountd
 #   - name: ntalkd
@@ -50,9 +81,12 @@ snmpd_dontlogtcpwrappersconnects: "true"
 #     program: /bin/sh
 #     arguments: /tmp/shtest
 
+# Disk space monitors.
+# minimum is the minimum free space in KB (kilobytes).
+# 10000 KB ≈ 10 MB.  Common values: 10000 (~10 MB), 102400 (~100 MB), 1048576 (~1 GB).
 snmpd_disks:
   - path: /
-    minimum: 10000
+    minimum: 10000  # KB
 
 snmpd_load:
   one_minute_average: 12

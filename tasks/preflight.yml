@@ -37,16 +37,15 @@
 # Section 2 — Variable validation
 # ---------------------------------------------------------------------------
 
-- name: preflight | Assert snmpd_security_names is a non-empty list
+- name: preflight | Assert snmpd_security_names is a list
   ansible.builtin.assert:
     that:
       - snmpd_security_names is defined
       - snmpd_security_names is iterable
       - snmpd_security_names is not string
-      - snmpd_security_names | length > 0
     quiet: true
     fail_msg: >-
-      snmpd_security_names must be a non-empty list of security name mappings.
+      snmpd_security_names must be a list of security name mappings (may be empty).
 
 - name: preflight | Assert each snmpd_security_names item
   ansible.builtin.assert:
@@ -67,16 +66,15 @@
     label: "{{ item.name }}"
     index_var: snmpd_idx
 
-- name: preflight | Assert snmpd_groups is a non-empty list
+- name: preflight | Assert snmpd_groups is a list
   ansible.builtin.assert:
     that:
       - snmpd_groups is defined
       - snmpd_groups is iterable
       - snmpd_groups is not string
-      - snmpd_groups | length > 0
     quiet: true
     fail_msg: >-
-      snmpd_groups must be a non-empty list of group definitions.
+      snmpd_groups must be a list of group definitions (may be empty).
 
 - name: preflight | Assert each snmpd_groups item
   ansible.builtin.assert:
@@ -129,16 +127,15 @@
     label: "{{ item.name }}"
     index_var: snmpd_idx
 
-- name: preflight | Assert snmpd_accesses is a non-empty list
+- name: preflight | Assert snmpd_accesses is a list
   ansible.builtin.assert:
     that:
       - snmpd_accesses is defined
       - snmpd_accesses is iterable
       - snmpd_accesses is not string
-      - snmpd_accesses | length > 0
     quiet: true
     fail_msg: >-
-      snmpd_accesses must be a non-empty list of access control entries.
+      snmpd_accesses must be a list of access control entries (may be empty).
 
 - name: preflight | Assert each snmpd_accesses item
   ansible.builtin.assert:
@@ -198,6 +195,110 @@
     quiet: true
     fail_msg: >-
       snmpd_dontlogtcpwrappersconnects must be the string 'true' or 'false'.
+
+- name: preflight | Assert snmpd_agentaddress is a string (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_agentaddress is string
+    quiet: true
+    fail_msg: >-
+      snmpd_agentaddress must be a string, e.g. '0.0.0.0,[::]'.
+  when: snmpd_agentaddress is defined
+
+- name: preflight | Assert snmpd_use_conf_d is boolean
+  ansible.builtin.assert:
+    that:
+      - snmpd_use_conf_d is boolean
+    quiet: true
+    fail_msg: >-
+      snmpd_use_conf_d must be a boolean (true or false).
+
+- name: preflight | Assert snmpd_conf_d_path is a string
+  ansible.builtin.assert:
+    that:
+      - snmpd_conf_d_path is string
+      - snmpd_conf_d_path | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_conf_d_path must be a non-empty string, e.g. '/etc/snmp/snmpd.conf.d'.
+  when: snmpd_use_conf_d
+
+- name: preflight | Assert snmpd_conf_d_file is a string
+  ansible.builtin.assert:
+    that:
+      - snmpd_conf_d_file is string
+      - snmpd_conf_d_file | length > 0
+    quiet: true
+    fail_msg: >-
+      snmpd_conf_d_file must be a non-empty string, e.g. 'ansible-snmpd.conf'.
+  when: snmpd_use_conf_d
+
+- name: preflight | Assert snmpd_trap_sinks is a list (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_trap_sinks is iterable
+      - snmpd_trap_sinks is not string
+    quiet: true
+    fail_msg: >-
+      snmpd_trap_sinks must be a list of trap destination definitions.
+  when: snmpd_trap_sinks is defined
+
+- name: preflight | Assert each snmpd_trap_sinks item has a host
+  ansible.builtin.assert:
+    that:
+      - item.host is defined
+      - item.host is string
+    quiet: true
+    fail_msg: >-
+      snmpd_trap_sinks[{{ snmpd_idx }}] must have a 'host' string field.
+  loop: "{{ snmpd_trap_sinks }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.host }}"
+    index_var: snmpd_idx
+  when: snmpd_trap_sinks is defined
+
+- name: preflight | Assert snmpd_rocommunities is a list (when defined)
+  ansible.builtin.assert:
+    that:
+      - snmpd_rocommunities is iterable
+      - snmpd_rocommunities is not string
+    quiet: true
+    fail_msg: >-
+      snmpd_rocommunities must be a list of rocommunity definitions.
+  when: snmpd_rocommunities is defined
+
+- name: preflight | Assert each snmpd_rocommunities item
+  ansible.builtin.assert:
+    that:
+      - item.community is defined
+      - item.community is string
+    quiet: true
+    fail_msg: >-
+      snmpd_rocommunities[{{ snmpd_idx }}] must have a 'community' string field.
+  loop: "{{ snmpd_rocommunities }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.community }}"
+    index_var: snmpd_idx
+  when: snmpd_rocommunities is defined
+
+- name: preflight | Assert snmpd_rocommunities source is a string (when defined)
+  ansible.builtin.assert:
+    that:
+      - item.source is string
+    quiet: true
+    fail_msg: >-
+      snmpd_rocommunities[{{ snmpd_idx }}] 'source' must be a string,
+      e.g. '192.168.1.0/24' or 'default'.
+  loop: "{{ snmpd_rocommunities }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.community }}"
+    index_var: snmpd_idx
+  when:
+    - snmpd_rocommunities is defined
+    - item.source is defined
 
 - name: preflight | Assert snmpd_processes is a list (when defined)
   ansible.builtin.assert:

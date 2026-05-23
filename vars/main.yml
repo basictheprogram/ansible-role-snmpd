@@ -23,3 +23,12 @@ _snmpd_packages:
 snmpd_packages: "{{ _snmpd_packages[ansible_facts['os_family']] | default(_snmpd_packages['default']) }}"
 
 snmpd_service: snmpd
+
+# Resolved destination path for the rendered snmpd.conf template.
+# When snmpd_use_conf_d is true, the config lands in conf.d and the main
+# /etc/snmp/snmpd.conf is replaced with an includeDir-only stub.
+snmpd_conf_dest: >-
+  {{ snmpd_use_conf_d | ternary(
+    snmpd_conf_d_path ~ '/' ~ snmpd_conf_d_file,
+    '/etc/snmp/snmpd.conf'
+  ) }}

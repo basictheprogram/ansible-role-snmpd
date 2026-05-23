@@ -13,10 +13,30 @@
   retries: 3
   delay: 5
 
+- name: Create snmpd conf.d directory
+  ansible.builtin.file:
+    path: "{{ snmpd_conf_d_path }}"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+  when: snmpd_use_conf_d
+
+- name: Configure snmpd main conf (includeDir stub)
+  ansible.builtin.template:
+    src: snmpd_main.conf.j2
+    dest: /etc/snmp/snmpd.conf
+    mode: "0600"
+    owner: root
+    group: root
+  notify:
+    - Restart snmpd
+  when: snmpd_use_conf_d
+
 - name: Configure snmpd
   ansible.builtin.template:
     src: snmpd.conf.j2
-    dest: /etc/snmp/snmpd.conf
+    dest: "{{ snmpd_conf_dest }}"
     mode: "0600"
     owner: root
     group: root

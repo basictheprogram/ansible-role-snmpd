@@ -278,7 +278,7 @@ snmpd_syscontact: "ops@example.org"
 snmpd_security_names:
   - name: myNet
     source: 192.168.1.0/24
-    community: "{{ vault_snmp_community }}"
+    community: "{{ vault_snmp_rocommunity }}"
 ```
 
 ---
